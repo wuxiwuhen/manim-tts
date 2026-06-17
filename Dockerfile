@@ -1,32 +1,20 @@
-# 带 TTS 能力的 Manim 镜像
-# 基础：官方 Manim CE 镜像（已含 LaTeX、ffmpeg、Cairo 等，省去一堆系统依赖）
+# 带 Azure TTS 的 Manim 镜像（生产级）
+# 基础：官方 Manim CE 镜像（已含 LaTeX、ffmpeg、Cairo）
 FROM manimcommunity/manim:stable
 
 USER root
 
-# manim-voiceover 的系统依赖：
-#   sox / libsox-fmt-all : 音频处理、调整语速（manim-voiceover 必需，版本需 >=14.4.2）
-#   portaudio19-dev      : PyAudio 编译依赖（录音用，可选）
-#   gettext              : 文案翻译（可选）
+# manim-voiceover 音频处理（调速等）需要 sox
 RUN apt-get update && apt-get install -y --no-install-recommends \
         sox \
         libsox-fmt-all \
-        portaudio19-dev \
-        gettext \
     && rm -rf /var/lib/apt/lists/*
 
-# Python 依赖：
-#   manim-voiceover : 给 manim 加配音 / 字幕自动对齐的框架
-#   edge-tts        : 微软 Edge 免费 TTS（无需 API key，但运行时要联网调微软端点）
-#   pydub           : 音频处理（manim-voiceover 依赖，显式装上更稳）
-# 注意：edge-tts 7.x 有较大改动；若 manim-voiceover 报错，
-#       把下面这行改成 "edge-tts<7" 再重新构建即可。
-RUN pip install --no-cache-dir --upgrade \
-        "manim-voiceover" \
-        "edge-tts" \
-        "pydub"
+# manim-voiceover + Azure TTS service
+#   - Azure 是官方付费端点 + key 认证，数据中心可用（不像 edge-tts 蹭的免费端点会被封）
+#   - Azure 返回逐词时间戳，manim-voiceover 据此自动做「动画-语音对齐」+ 字幕
+# 运行时需设环境变量：AZURE_SUBSCRIPTION_KEY、AZURE_SERVICE_REGION
+RUN pip install --no-cache-dir --upgrade "manim-voiceover[azure]"
 
-# 以 root 启动：Daytona 按镜像的 USER 指令启动容器，基础镜像的默认用户
-# 在 Daytona sandbox 的 passwd 里缺失会报 "unable to find user manim"。
-# root 一定存在，最稳妥；manim 在 root 下渲染没问题。
+# root 启动，保证 Daytona sandbox 能稳定拉起
 USER root
