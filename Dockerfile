@@ -26,4 +26,7 @@ RUN pip install --no-cache-dir --upgrade \
         "edge-tts" \
         "pydub"
 
-USER manim
+# 以 root 启动：Daytona 按镜像的 USER 指令启动容器，基础镜像的默认用户
+# 在 Daytona sandbox 的 passwd 里缺失会报 "unable to find user manim"。
+# root 一定存在，最稳妥；manim 在 root 下渲染没问题。
+USER root
